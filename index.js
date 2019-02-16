@@ -1,68 +1,131 @@
-'use strict';
+'use strict'
 
-// Imports dependencies and set up http server
-const 
-  request = require('request'),
-  express = require('express'),
-  body_parser = require('body-parser'),
-  app = express().use(body_parser.json()); // creates express http server
+const express = require('express')
+const bodyParser = require('body-parser')
+const request = require('request')
+const app = express()
 
-// Sets server port and logs message on success
-app.listen(process.env.PORT || 1337, () => console.log('webhook is listening'));
+app.set('port', (process.env.PORT || 5000))
 
-// Accepts POST requests at /webhook endpoint
-app.post('/webhook', (req, res) => {  
+// parse application/x-www-form-urlencoded
+app.use(bodyParser.urlencoded({extended: false}))
 
-  // Parse the request body from the POST
-  let body = req.body;
+// parse application/json
+app.use(bodyParser.json())
 
-  // Check the webhook event is from a Page subscription
-  if (body.object === 'page') {
+// index
+app.get('/', function (req, res) {
+	res.send('hello world i am a secret bot')
+})
 
-    // Iterate over each entry - there may be multiple if batched
-    body.entry.forEach(function(entry) {
+// for facebook verification
+app.get('/webhook/', function (req, res) {
+	if (req.query['hub.verify_token'] === 'Cyclope_Jade_Project') {
+		res.send(req.query['hub.challenge'])
+	} else {
+		res.send('Error, wrong token')
+	}
+})
 
-      // Get the webhook event. entry.messaging is an array, but 
-      // will only ever contain one event, so we get index 0
-      let webhook_event = entry.messaging[0];
-      console.log(webhook_event);
-      
-    });
+// to post data
+app.post('/webhook/', function (req, res) {
+	let messaging_events = req.body.entry[0].messaging
+	for (let i = 0; i < messaging_events.length; i++) {
+		let event = req.body.entry[0].messaging[i]
+		let sender = event.sender.id
+		if (event.message && event.message.text) {
+			let text = event.message.text
+			if (text === 'Generic'){ 
+				console.log("welcome to chatbot")
+				//sendGenericMessage(sender)
+				continue
+			}
+			sendTextMessage(sender, "Text received, echo: " + text.substring(0, 200))
+		}
+		if (event.postback) {
+			let text = JSON.stringify(event.postback)
+			sendTextMessage(sender, "Postback received: "+text.substring(0, 200), token)
+			continue
+		}
+	}
+	res.sendStatus(200)
+})
 
-    // Return a '200 OK' response to all events
-    res.status(200).send('EVENT_RECEIVED');
 
-  } else {
-    // Return a '404 Not Found' if event is not from a page subscription
-    res.sendStatus(404);
-  }
+// recommended to inject access tokens as environmental variables, e.g.
+// const token = process.env.FB_PAGE_ACCESS_TOKEN
+const token = "EAAD0EBlG0HwBAPWzaliZBY9PoQUqKvD4MmQYfyZC1HangZBUEM3gpMUEulpDVrZCDBlZB9KUoE83T401mnZAbVXIZCrmxtMSJukJK64rsEzTmUjw0nwdtbDZCAKXtWiAj6x8WxTXCLTihUPAWlUq66q5OLEZB5OxFgBUX4jJTuPSMggZDZD"
 
-});
+function sendTextMessage(sender, text) {
+	let messageData = { text:text }
+	
+	request({
+		url: 'https://graph.facebook.com/v2.6/me/messages',
+		qs: {access_token:token},
+		method: 'POST',
+		json: {
+			recipient: {id:sender},
+			message: messageData,
+		}
+	}, function(error, response, body) {
+		if (error) {
+			console.log('Error sending messages: ', error)
+		} else if (response.body.error) {
+			console.log('Error: ', response.body.error)
+		}
+	})
+}
 
-// Accepts GET requests at the /webhook endpoint
-app.get('/webhook', (req, res) => {
-  
-  /** UPDATE YOUR VERIFY TOKEN **/
-  const VERIFY_TOKEN = "<Cyclope_Jade_Project>";
-  
-  // Parse params from the webhook verification request
-  let mode = req.query['hub.mode'];
-  let token = req.query['hub.verify_token'];
-  let challenge = req.query['hub.challenge'];
-    
-  // Check if a token and mode were sent
-  if (mode && token) {
-  
-    // Check the mode and token sent are correct
-    if (mode === 'subscribe' && token === VERIFY_TOKEN) {
-      
-      // Respond with 200 OK and challenge token from the request
-      console.log('WEBHOOK_VERIFIED');
-      res.status(200).send(challenge);
-    
-    } else {
-      // Responds with '403 Forbidden' if verify tokens do not match
-      res.sendStatus(403);      
-    }
-  }
-});
+function sendGenericMessage(sender) {
+	let messageData = {
+		"attachment": {
+			"type": "template",
+			"payload": {
+				"template_type": "generic",
+				"elements": [{
+					"title": "First card",
+					"subtitle": "Element #1 of an hscroll",
+					"image_url": "http://messengerdemo.parseapp.com/img/rift.png",
+					"buttons": [{
+						"type": "web_url",
+						"url": "https://www.messenger.com",
+						"title": "web url"
+					}, {
+						"type": "postback",
+						"title": "Postback",
+						"payload": "Payload for first element in a generic bubble",
+					}],
+				}, {
+					"title": "Second card",
+					"subtitle": "Element #2 of an hscroll",
+					"image_url": "http://messengerdemo.parseapp.com/img/gearvr.png",
+					"buttons": [{
+						"type": "postback",
+						"title": "Postback",
+						"payload": "Payload for second element in a generic bubble",
+					}],
+				}]
+			}
+		}
+	}
+	request({
+		url: 'https://graph.facebook.com/v2.6/me/messages',
+		qs: {access_token:token},
+		method: 'POST',
+		json: {
+			recipient: {id:sender},
+			message: messageData,
+		}
+	}, function(error, response, body) {
+		if (error) {
+			console.log('Error sending messages: ', error)
+		} else if (response.body.error) {
+			console.log('Error: ', response.body.error)
+		}
+	})
+}
+
+// spin spin sugar
+app.listen(app.get('port'), function() {
+	console.log('running on port', app.get('port'))
+})
