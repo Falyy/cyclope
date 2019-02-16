@@ -1,0 +1,24 @@
+{
+  "name": "cyclope",
+  "version": "1.0.0",
+  "description": "This is part of the Jade project",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Falyy/cyclope.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Falyy/cyclope/issues"
+  },
+  "homepage": "https://github.com/Falyy/cyclope#readme",
+  "dependencies": {
+    "body-parser": "^1.18.3",
+    "express": "^4.16.4",
+    "request": "^2.88.0"
+  }
+}
